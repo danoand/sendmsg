@@ -2,20 +2,26 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
+	"regexp"
+	"strings"
 )
 
 const (
 	twilioAccountSID = "AC1661d55ca882016d8e4c038c47acc8bc"
 	twilioAuthToken  = "62d5f0c0455961f085641e58963fc1d0"
 	twilioNumber     = "+16302257108"
+	myNumber         = "+16305146611"
 )
 
 var (
-	args []string
+	ok          bool
+	err         error
+	args        []string
+	rgxNonDigit = regexp.MustCompile("\\D")
+	tmp         string
 
 	// Set up the elements of the REST API URL
 	twilioURLElement1         = "https://"
@@ -51,12 +57,12 @@ func sendTwilioText(phn string, msg string) bool {
 
 	// Configure an HTTP POST
 	if twResp, rErr = http.PostForm(twilioConstructMessageURL, urlVals); rErr != nil {
-		log.Printf("ERROR: error posting text message to Twilio. See: %v\n", rErr)
+		fmt.Printf("ERROR: error posting text message to Twilio. See: %v\n", rErr)
 		retVal = false
 	}
 
-	// Log the Twilo response
-	log.Printf("INFO: Status of Twilio response: %v\n", twResp.Status)
+	// Print the Twilo response
+	fmt.Printf("INFO: Status of Twilio response: %v\n", twResp.Status)
 
 	// Return to caller
 	return retVal
@@ -73,6 +79,22 @@ func prtHelp() {
 	fmt.Printf("----- 'sendmsg' Help -----\n\n")
 }
 
+// genNum generates a phone number suitable for calling the Twilio API
+func genNum(num string) (string, error) {
+	var tmp string
+
+	tmp = rgxNonDigit.ReplaceAllString(num, "")
+
+	// Have a valid 10 digit number?
+	if len(tmp) != 10 {
+		// Error - not a valid 10 digit number
+		return "", fmt.Errorf("not a valid 10 digit number")
+	}
+
+	// Have a valid 10 digit number; prepend with '+1'
+	return "+1" + tmp, nil
+}
+
 func main() {
 	// Grab the command line arguments
 	args = os.Args
@@ -84,9 +106,37 @@ func main() {
 	}
 
 	// User requesting 'help'
-	if len(args) == 1 || args[1] == "help" || args[1] == "h" {
+	tmp = strings.ToLower(args[1])
+	if tmp == "help" || tmp == "h" {
 		prtHelp()
 		goto WrapUp
+	}
+
+	// Only one argument: text argument to my phone
+	if len(args) == 2 {
+		if ok = sendTwilioText(myNumber, args[1]); !ok {
+			// Error occurred sending the text message
+			fmt.Printf("ERROR: error occurred sending the text message\n")
+			goto WrapUp
+		}
+	}
+
+	// Have two arguments: send text (arg 2) to number (arg 1)
+	if len(args) == 3 {
+		// Generate a valid Twilio number
+		if tmp, err = genNum(args[1]); err != nil {
+			// Error - argument 1 cannot be transformed to a Twilio phone number
+			fmt.Printf("ERROR: error occurred validating/transforming the supplied phone number. See: %v\n")
+			goto WrapUp
+		}
+
+		sendTwilioText(tmp, args[2])
+	}
+
+	// Have an unexpected number of arguments
+	if len(args) > 3 {
+		// Unexpected number of arguments
+		fmt.Printf("ERROR: unexpected number of arguments, check your syntax and try again\n")
 	}
 
 WrapUp:
