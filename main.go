@@ -10,10 +10,10 @@ import (
 )
 
 const (
-	twilioAccountSID = "AC1661d55ca882016d8e4c038c47acc8bc"
-	twilioAuthToken  = "62d5f0c0455961f085641e58963fc1d0"
-	twilioNumber     = "+16302257108"
-	myNumber         = "+16305146611"
+	twilioAccountSID = "REPLACE_FROM_1PASSWORD"
+	twilioAuthToken  = "REPLACE_FROM_1PASSWORD"
+	twilioNumber     = "REPLACE_FROM_1PASSWORD"
+	myNumber         = "REPLACE_FROM_1PASSWORD"
 )
 
 var (
