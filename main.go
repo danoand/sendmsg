@@ -33,7 +33,7 @@ var (
 )
 
 // sendTwilioText triggers a Text message via Twilio
-func sendTwilioText(phn string, msg string) bool {
+func sendTwilioText(phn, msg, media string) bool {
 	var (
 		rErr   error
 		retVal = true
@@ -55,6 +55,11 @@ func sendTwilioText(phn string, msg string) bool {
 	urlVals.Set("To", phn)
 	urlVals.Set("Body", msg)
 
+	if len(media) != 0 {
+		// Assuming a media URL is present
+		urlVals.Set("MediaUrl", media)
+	}
+
 	// Configure an HTTP POST
 	if twResp, rErr = http.PostForm(twilioConstructMessageURL, urlVals); rErr != nil {
 		fmt.Printf("ERROR: error posting text message to Twilio. See: %v\n", rErr)
@@ -72,10 +77,11 @@ func sendTwilioText(phn string, msg string) bool {
 func prtHelp() {
 	fmt.Printf("\n----- 'sendmsg' Help -----\n")
 	fmt.Printf("01 Use 'sendmsg' to send a text message to a 10 digit phone number\n")
-	fmt.Printf("02 Command format: ' sendmsg <phone number> <text message body> '\n")
+	fmt.Printf("02 Command format: ' sendmsg <phone number> <text message body> <pic url>'\n")
 	fmt.Printf("03 Send a text to a phone number: ' sendmsg \"4158675309\" \"Meet you at 10\" '\n")
 	fmt.Printf("04 Send a text message to your phone: ' sendmsg \"Meet you at 10\" '\n")
-	fmt.Printf("05 NOTE: If your parameters include embedded spaces, remember to enclose those parameters in quotes\n")
+	fmt.Printf("05 Send a pic and text message to your phone: ' sendmsg \"Meet you at 10\" \"http://mydomain.com/mypic.jpg\"'\n")
+	fmt.Printf("06 NOTE: If your parameters include embedded spaces, remember to enclose those parameters in quotes\n")
 	fmt.Printf("----- 'sendmsg' Help -----\n\n")
 }
 
@@ -114,7 +120,7 @@ func main() {
 
 	// Only one argument: text argument to my phone
 	if len(args) == 2 {
-		if ok = sendTwilioText(myNumber, args[1]); !ok {
+		if ok = sendTwilioText(myNumber, args[1], ""); !ok {
 			// Error occurred sending the text message
 			fmt.Printf("ERROR: error occurred sending the text message\n")
 			goto WrapUp
@@ -126,15 +132,34 @@ func main() {
 		// Generate a valid Twilio number
 		if tmp, err = genNum(args[1]); err != nil {
 			// Error - argument 1 cannot be transformed to a Twilio phone number
-			fmt.Printf("ERROR: error occurred validating/transforming the supplied phone number. See: %v\n")
+			fmt.Printf("ERROR: error occurred validating/transforming the supplied phone number. See: %v\n", err)
 			goto WrapUp
 		}
 
-		sendTwilioText(tmp, args[2])
+		sendTwilioText(tmp, args[2], "")
+	}
+
+	// Have three arguments: send pic (arg 3) and text (arg 2) to number (arg 1)
+	if len(args) == 4 {
+		// Generate a valid Twilio number
+		if tmp, err = genNum(args[1]); err != nil {
+			// Error - argument 1 cannot be transformed to a Twilio phone number
+			fmt.Printf("ERROR: error occurred validating/transforming the supplied phone number. See: %v\n", err)
+			goto WrapUp
+		}
+
+		// Validate the pic (media file) URL
+		if _, err = url.ParseRequestURI(args[3]); err != nil {
+			// Error parsing the URL string
+			fmt.Printf("ERROR: error parsing the media URL. See: %v\n", err)
+			goto WrapUp
+		}
+
+		sendTwilioText(tmp, args[2], args[3])
 	}
 
 	// Have an unexpected number of arguments
-	if len(args) > 3 {
+	if len(args) > 4 {
 		// Unexpected number of arguments
 		fmt.Printf("ERROR: unexpected number of arguments, check your syntax and try again\n")
 	}
